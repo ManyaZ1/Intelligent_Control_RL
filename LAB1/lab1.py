@@ -1,47 +1,8 @@
-# %% [markdown]
-# # Intelligent Control (ECE-DK807)
-# 
-# ## Electrical and Computer Engineering Department, University of Patras Greece
-# 
-# **Instructor:** Konstantinos Chazilygeroudis (costashatz@upatras.gr)
-# 
-# ## Lab 1
-# 
-# ### 2D Grid World
-# 
-# <img src="attachment:20811c7d-ae84-4298-af70-ad1342b9bba7.png" width="200"/>
-# 
-# - S (blue) is the starting position
-# - G (green) is the goal
-# - Red cells are lava
-# 
-# At each timestep, the agent can be in only one cell. The agent has available the following actions:
-# 
-# 1. Move Up
-# 2. Move Down
-# 3. Move Right
-# 4. Move Left
-# 
-# If a move would make the agent go "out of bounds", then the move has no effect and the agent remains in place. The agent receives the following rewards:
-# 
-# - $-1$ for each step
-# - $-10$ for stepping on lava
-# - $50$ for stepping on goal
-# 
-# The environment "stops" when the agent reaches the goal or steps on lava.
-# 
-# We first need to define the *Markov Decision Process* (MDP) for this problem/world.
 
-# %%
-# Let's first import modules
 import numpy as np # Linear Algebra
 import matplotlib.pyplot as plt # Plotting
 import copy
 
-# %% [markdown]
-# <img src="attachment:61ac09ad-5953-441d-ae6a-d1f8d3eb771b.png" width="200"/>
-
-# %%
 ### TO-DO: Define the state space. We want to define each cell with a tuple (i,j), and we want to save all cells/states in a list called 'states'.
 ### ANSWER: Insert code here
 states=[]
@@ -124,7 +85,6 @@ def return_next_state(s,a):
         if s[0]<3: sp=(s[0]+1,s[1])
     return sp
 
-# %%
 assert(len(states) == 16)
 assert(len(actions) == 4)
 assert(reward[(2, 1)] == -1.)
@@ -132,25 +92,6 @@ assert(reward[(1, 1)] == reward[(1, 2)] == -10.)
 assert(reward[(3, 3)] == 50.)
 assert(len(transition) == 1024)
 
-
-# %% [markdown]
-# ### Iterative Policy Evaluation (IPE)
-# 
-# **Goal:** We want to find the *Value function* $V_{\pi}(\boldsymbol{s})$ of a *specific* policy $\pi$.
-# 
-# Very simple algorithm:
-# 
-# - Iterative application of the Bellman expectation equations
-# - At each iteration we get closer to the actual Value function
-# - At each iteration $k+1$:
-#   - For all states $\boldsymbol{s}\in\mathcal{S}$
-#   - Compute $V_{\pi}^{k+1}$ using $V_{\pi}^k$: $V_{\pi}^{k+1}(\boldsymbol{s}) = \sum_{\boldsymbol{a}\in\mathcal{A}}\pi(\boldsymbol{a}|\boldsymbol{s})\Big(R(\boldsymbol{s},\boldsymbol{a}) + \gamma\sum_{\boldsymbol{s}'\in\mathcal{S}}P(\boldsymbol{s},\boldsymbol{a},\boldsymbol{s}')V_{\pi}^k(\boldsymbol{s}')\Big)$
-# - We can prove that this converges to the true Value function
-# 
-# 
-# **Let's implement IPE for our 2D grid world and the random policy.** Let's start by creating a function for the policy:
-
-# %%
 # Uniform policy
 policy = {}
 # Let's create a uniform random policy
@@ -158,10 +99,7 @@ for s in states:
     for a in actions:
         policy[(s, a)] = 1. / float(len(actions))
 
-# %% [markdown]
-# Now let's create a function that computes $V_{\pi}^{k+1}$ using $V_{\pi}^k$: $V_{\pi}^{k+1}(\boldsymbol{s}) = \sum_{\boldsymbol{a}\in\mathcal{A}}\pi(\boldsymbol{a}|\boldsymbol{s})\Big(R(\boldsymbol{s},\boldsymbol{a}) + \gamma\sum_{\boldsymbol{s}'\in\mathcal{S}}P(\boldsymbol{s},\boldsymbol{a},\boldsymbol{s}')V_{\pi}^k(\boldsymbol{s}')\Big)$. In other words, performs one iteration of the IPE algorithm:
 
-# %%
 def ipe_iter(Vk, gamma = 0.9):
     Vkp1 = copy.copy(Vk)
     ### TO-DO: Implement iterate. Fill Vkp1 (V_{k+1}) with the correct values. Vk is a dictionary.
@@ -170,27 +108,15 @@ def ipe_iter(Vk, gamma = 0.9):
         Vkp1[s]=0.
         for a in actions:
             expected_return=0.
-            #next_state=None
-            #for sp in states:
-            #    if transition[(s, a, sp)]==1.: 
-            #        next_state=sp
             if is_terminal(s) or is_lava(s):
                 expected_return=0.
-            #elif is_terminal(next_state) or is_lava(next_state):
-            #    next_return = 0.0    
             else:
                 for sp in states:
                     expected_return+=transition[(s, a, sp)]*Vk[sp]
-                
-            
             Vkp1[s]+=policy[(s, a)]*(reward[s]+gamma*expected_return)  
         ### END of ANSWER
     return Vkp1
 
-# %% [markdown]
-# Now let's implement the whole algorithm!
-
-# %%
 def ipe(gamma = 0.5, max_iters = 20):
     V = {}
     ### TO-DO: Initialize the value function (V) with zeros
@@ -208,8 +134,6 @@ def ipe(gamma = 0.5, max_iters = 20):
 
 V = ipe(0.5, 20)
 
-
-# %%
 # Let's plot the value function
 def plot_value_function(V):
     # Visualize Value function
@@ -225,17 +149,11 @@ plot_value_function(V)
 
 print(V)
 
-# %%
 assert(np.isclose(V[(0, 0)], -2.4413716414811613))
 assert(np.isclose(V[(3, 2)], 5.68572733326004))
 assert(np.isclose(V[(3, 3)], 50.))
 assert(np.isclose(V[(1, 1)], -10.))
 
-
-# %% [markdown]
-# Now let's create a policy that always chooses the 'Move Right' Action, and re-run the iterative policy evaluation!
-
-# %%
 # Policy that alwas moves right!
 policy = {}
 ### TO-DO: Create a policy that always moves right
@@ -248,23 +166,18 @@ for s in states:
             policy[(s, a)] = 0.
 ### END of ANSWER
 
-# %%
 # Re-run Iterative Policy Evaluation
 V = ipe(0.5, 20)
 
-# %%
 plot_value_function(V)
 
 print(V)
 
-# %%
 assert(np.isclose(V[(0, 0)], -1.9999980926513672))
 assert(np.isclose(V[(3, 2)], 24.))
 assert(np.isclose(V[(3, 3)], 50.))
 assert(np.isclose(V[(1, 1)], -10.))
 
-
-# %% [markdown]
 # ### Policy Iteration
 # 
 # **Goal:** Find the *optimal* policy
@@ -277,7 +190,6 @@ assert(np.isclose(V[(1, 1)], -10.))
 # 
 # Let's implement it for our world!
 
-# %%
 V = {}
 ### TO-DO: Initialize the value function (V) with zeros. Just copy from above
 ### ANSWER: Insert code here
@@ -345,10 +257,6 @@ for a in actions:
     assert(policy[((3, 3), a)] == 0.25)
 assert(policy[((3, 2), 'Move Right')] == 1.)
 
-
-# %% [markdown]
-# ### Value Iteration
-# 
 # **Goal:** Find the *optimal* policy
 # 
 # - Iterative application of the *Bellman Equations*
@@ -359,7 +267,6 @@ assert(policy[((3, 2), 'Move Right')] == 1.)
 # 
 # Let's implement it for our world!
 
-# %%
 V = {}
 ### TO-DO: Initialize the value function (V) with zeros. Just copy from above
 ### ANSWER: Insert code here
@@ -434,7 +341,6 @@ print(policy)
 plot_value_function(V)
 print(V)
 
-# %%
 assert(V[(0, 0)] == -1.1875)
 assert(V[(0, 1)] == -0.375)
 assert(V[(3, 3)] == 50.)
@@ -445,8 +351,6 @@ for a in actions:
     assert(policy[((3, 3), a)] == 0.25)
 assert(policy[((3, 2), 'Move Right')] == 1.)
 
-
-# %%
 
 
 
